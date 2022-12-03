@@ -7,13 +7,13 @@ public class DayTwo {
    * @throws Exception
    */
   public static void main(String[] args) throws Exception {
-    Scanner numberScan = new Scanner(new File("data/input.txt"));
+    Scanner scan = new Scanner(new File("data/input.txt"));
     int opponent;
     int player;
     int totalScore = 0;
-    while(numberScan.hasNext()){
-      opponent = numberScan.next().charAt(0) - 65;
-      player = numberScan.next().charAt(0) - 88;
+    while(scan.hasNext()){
+      opponent = scan.next().charAt(0) - 65;
+      player = scan.next().charAt(0) - 88;
       totalScore += outcome(opponent, player);
     }
     System.out.println(totalScore);
