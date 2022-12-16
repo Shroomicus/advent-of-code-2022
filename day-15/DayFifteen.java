@@ -1,5 +1,4 @@
 import java.io.File;
-import java.math.BigInteger;
 import java.util.ArrayList;
 
 import java.util.Scanner;
@@ -65,12 +64,10 @@ public class DayFifteen {
     Boolean found = false;
     currBeacon = senseArray[0];
     int beacNum = 0;
-    int newBeac;
     int x = 0;
     int y = 0;
     while(!found){
       if(!isIn(currBeacon, x, y)){
-        newBeac = beacNum;
         while(!isIn(currBeacon, x, y)){
           beacNum = (beacNum + 1) % (sensors.size());
           currBeacon = senseArray[beacNum];
