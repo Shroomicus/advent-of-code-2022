@@ -134,12 +134,12 @@ public class DaySixteen {
 
       int offset = currValve.flowRate;
 
-      if(currTime > 30){
+      if(currTime > 26){
         continue;
       }
-      if(currPressure + (30 - currTime) * (totalFlow(currVisited) - offset) > maxFlow){
-        maxFlow = currPressure + (30 - currTime) * (totalFlow(currVisited) - offset);
-        System.out.println(totalFlow(currVisited) - offset);
+      if(currPressure + (26 - currTime) * (totalFlow(currVisited) - offset) > maxFlow){
+        maxFlow = currPressure + (26 - currTime) * (totalFlow(currVisited) - offset);
+        // System.out.println(totalFlow(currVisited) - offset);
         visitPath = currVisited;
       }
 
@@ -173,7 +173,7 @@ public class DaySixteen {
           newTime++;
           newPressure += totalFlow(newVisited);
         }
-        if(newTime > 30){
+        if(newTime > 26){
           continue;
         }
 
