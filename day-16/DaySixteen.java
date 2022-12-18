@@ -118,13 +118,6 @@ public class DaySixteen {
     pressure.add(0);
     int maxFlow = 0;
     ArrayList<Valve> visitPath = startVisited;
-
-    int empty = 0;
-    for(int i = 0; i<valves.size(); i++){
-      if(valves.get(i).flowRate==0){
-        empty++;
-      }
-    }
     
     while(queue.size()>0){
       Valve currValve = new Valve(queue.removeFirst());
@@ -134,12 +127,23 @@ public class DaySixteen {
 
       int offset = currValve.flowRate;
 
-      if(currTime > 26){
+      int empty = 0;
+      for(int i = 0; i<valves.size(); i++){
+        if((valves.get(i).flowRate == 0)){
+          empty++;
+        }
+      }
+
+      // if(valves.size()-empty == currVisited.size() - 1){
+      //   offset = 0;
+      // }
+
+      if(currTime > 30){
         continue;
       }
-      if(currPressure + (26 - currTime) * (totalFlow(currVisited) - offset) > maxFlow){
-        maxFlow = currPressure + (26 - currTime) * (totalFlow(currVisited) - offset);
-        // System.out.println(totalFlow(currVisited) - offset);
+      if(currPressure + (30 - currTime) * (totalFlow(currVisited) - offset) > maxFlow){
+        maxFlow = currPressure + (30 - currTime) * (totalFlow(currVisited) - offset);
+        System.out.println(maxFlow + " :\t" + (totalFlow(currVisited) - offset) + " : " + (currVisited.size() - 1) + " : " + (valves.size()-empty));
         visitPath = currVisited;
       }
 
@@ -173,7 +177,7 @@ public class DaySixteen {
           newTime++;
           newPressure += totalFlow(newVisited);
         }
-        if(newTime > 26){
+        if(newTime > 30){
           continue;
         }
 
