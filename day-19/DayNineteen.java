@@ -1,5 +1,4 @@
 import java.io.File;
-import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Scanner;
 import java.util.regex.Matcher;
@@ -30,6 +29,8 @@ public class DayNineteen {
 
   public static class RobotGroup{
     Robot[] robotTypes = new Robot[4];
+    int[] maxNeeded = {0, 0, 0, 0};
+
     RobotGroup(String s){
       Pattern p = Pattern.compile("\\d+");
       Matcher m = p.matcher(s);
@@ -38,6 +39,11 @@ public class DayNineteen {
       robotTypes[1] = new Robot(getNext(m), 0, 0, 1);
       robotTypes[2] = new Robot(getNext(m), getNext(m), 0, 2);
       robotTypes[3] = new Robot(getNext(m), 0, getNext(m), 3);
+      for(int j = 0; j<3; j++){
+        for(int i = 0; i<4; i++){
+          maxNeeded[j] = Math.max(maxNeeded[j], robotTypes[i].costs[j]);
+        }
+      }
     }
 
     Boolean canMake(int rNum, int[] producing){
@@ -67,6 +73,8 @@ public class DayNineteen {
     int[] robotNums = {1, 0, 0, 0};
     int[] productCount = {0, 0, 0, 0};
 
+    String order = "";
+
     int factory = -1;
     Boolean makingRobot = false;
 
@@ -87,12 +95,24 @@ public class DayNineteen {
       this.makingRobot = count.makingRobot;
       this.time = count.time;
       this.target = count.target;
+      this.order = count.order;
     }
+
     Boolean isValid(){
       for(int i = 0; i<productCount.length; i++){
         if(productCount[i] < 0){
           return false;
         }
+      }
+      for(int i = 0; i<3; i++){
+        robotNums[factory]++;
+        if(robotNums[i] > costs.maxNeeded[i]){
+          return false;
+        }
+        robotNums[factory]--;
+      }
+      if(productCount[2] >= costs.robotTypes[3].costs[2] && productCount[0] >= costs.robotTypes[3].costs[0] && target != 3){
+        return false;
       }
       return true;
     }
@@ -109,23 +129,29 @@ public class DayNineteen {
       for(int i = 0; i<3; i++){
         remainingCost[i] = costs.robotTypes[target].costs[i] - productCount[i];
       }
+      // System.out.println(productCount[0] + ", " + productCount[1] + ", " + productCount[2]);
       // System.out.println(remainingCost[0] + ", " + remainingCost[1] + ", " + remainingCost[2]);
+      // System.out.println(robotNums[0] + ", " + robotNums[1] + ", " + robotNums[2] + ", " + robotNums[3]);
+      // System.out.println();
 
       int max = 0;
       for(int i = 0; i<remainingCost.length; i++){
-        if(robotNums[i] == 0){
+        if(remainingCost[i] <= 0){
           continue;
         }
-        int result;
-        if(makingRobot && i == factory){
-          remainingCost[i] -= robotNums[i] - 1;
+        if(robotNums[i] + (i == factory ? 1 : 0) == 0){
+          continue;
+        }
+        int result = 0;
+        if(!(makingRobot && i == factory)){
+          result = (remainingCost[i] + robotNums[i]-1) / robotNums[i];
+        } else {
+          remainingCost[i] -= (robotNums[i]);
           if(remainingCost[i] <= 0){
             result = 1;
           } else {
-            result = (remainingCost[i] + robotNums[i]-1) / robotNums[i] - 1;
+            result = ((remainingCost[i] + (robotNums[i])) / (robotNums[i] + 1)) + 1;
           }
-        } else {
-          result = (remainingCost[i] + robotNums[i]-1) / robotNums[i];
         }
         if(result > max){
           max = result;
@@ -133,14 +159,20 @@ public class DayNineteen {
       }
       // System.out.println(max);
       produce(max);
+      // System.out.println(productCount[0] + ", " + productCount[1] + ", " + productCount[2]);
       for(int i = 0; i<3; i++){
         productCount[i] -= costs.robotTypes[target].costs[i];
       }
+      // System.out.println(productCount[0] + ", " + productCount[1] + ", " + productCount[2]);
+      // System.out.println();
       factory = target;
       makingRobot = true;
     }
 
     void produce(int time){
+      if(time == 0){
+        return;
+      }
       if(makingRobot){
         robotNums[factory]++;
       }
@@ -152,11 +184,15 @@ public class DayNineteen {
     }
 
     int finish(int totalTime){
-      return productCount[3] + (totalTime - time) * robotNums[3] - ((makingRobot && factory == 3 ? 1 : 0));
+      if(makingRobot && (factory == 3)){
+        return productCount[3] + (totalTime - time) * (robotNums[3] + 1) - 1;
+      }
+      return productCount[3] + (totalTime - time) * robotNums[3];
     }
 
     RobotCount splitOff(int newTarget){
       RobotCount newCount = new RobotCount(this);
+      newCount.order += newTarget + "->";
       newCount.target = newTarget;
       return newCount;
     }
@@ -170,69 +206,56 @@ public class DayNineteen {
         result += "Obs:\t" + "Robots: " + robotNums[2] + "\tResources:" + productCount[2] + "\n";
         result += "Geode:\t" + "Robots: " + robotNums[3] + "\tResources:" + productCount[3] + "\n";
         result += "Making: " + makingRobot + " : " + factory + "\n";
+        result += "Order:\t" + order;
         return result;
     }
   }
   public static void main(String[] args) throws Exception {
-    Scanner scan = new Scanner(new File("data/input3.txt"));
-    RobotGroup startGroup = new RobotGroup(scan.nextLine());
-    RobotCount startCount = new RobotCount(startGroup);
-    LinkedList<RobotCount> queue = new LinkedList<RobotCount>();
+    Scanner scan = new Scanner(new File("data/input.txt"));
+    int realTotal = 1;
+    int count = 1;
+    while(scan.hasNextLine()){
+      RobotGroup startGroup = new RobotGroup(scan.nextLine());
+      RobotCount startCount = new RobotCount(startGroup);
+      LinkedList<RobotCount> queue = new LinkedList<RobotCount>();
+      queue.add(startCount);
+      int max = 0;
+      int[] maxTime = new int[33];
+      for(int i = 0; i<maxTime.length; i++){
+        maxTime[i] = 0;
+      }
+      while(queue.size() > 0){
+        // System.out.println(queue.size());
+        RobotCount checkCount = queue.removeFirst();
+        for(int i = 0; i<4; i++){
+          if(checkCount.canMake(i)){
+            RobotCount newCount = checkCount.splitOff(i);
+            newCount.advance();
+            if(!newCount.isValid()){
+              continue;
+            }
+            if(newCount.time > 32){
+              continue;
+            }
 
-    queue.add(startCount);
-    int max = 0;
-    RobotCount maxCount = new RobotCount(startCount);
-    while(queue.size() > 0){
-      // System.out.println(queue.size());
-      RobotCount checkCount = queue.removeFirst();
-      // System.out.println(queue.size() + " : " + checkCount.time);
-      for(int i = 0; i<4; i++){
-        if(checkCount.canMake(i)){
-          RobotCount newCount = checkCount.splitOff(i);
-          newCount.advance();
-          if(!newCount.isValid()){
-            continue;
-          }
-          if(newCount.time > 24){
-            continue;
-          }
-          int finished = newCount.finish(24);
-          if(finished >= max){
-            max = finished;
-            maxCount = newCount;
-          }
-          if(finished <= max/2){
-            continue;
-          }
-          if(newCount.time >= 8){
-            // if(newCount.robotNums[1] == 0){
-            //   continue;
-            // }
-            if(newCount.time >= 16){
-              // if(newCount.robotNums[2] == 0){
-              //   continue;
-              // }
+            if(newCount.productCount[3] >= maxTime[newCount.time]){
+              maxTime[newCount.time] = newCount.productCount[3];
+            } else {
+              continue;
             }
-            if(newCount.time >= 18){
-              // if(newCount.robotNums[3] == 0){
-              //   continue;
-              // }
-              // int finished = newCount.finish(24);
-              // if(finished >= max){
-              //   max = finished;
-              //   maxCount = newCount;
-              // }
-              // if(finished <= max/2){
-              //   continue;
-              // }
-            }
+            queue.add(newCount);
           }
-          queue.add(newCount);
         }
       }
+      for(int i = 0; i<maxTime.length; i++){
+        max = Math.max(max, maxTime[i]);
+      }
+      realTotal *= max;
+      System.out.println(max);
+      count++;
+      // System.out.println(maxCount);
     }
-    System.out.println(max);
-    System.out.println(maxCount);
+    System.out.println(realTotal);
   }
 
   public static int getNext(Matcher m){
