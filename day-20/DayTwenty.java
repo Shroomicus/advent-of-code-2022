@@ -1,4 +1,5 @@
 import java.io.File;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.LinkedList;
 import java.util.Scanner;
@@ -9,12 +10,15 @@ public class DayTwenty {
    */
 
   public static class Number{
-    int originalNum;
+    BigInteger originalNum;
     int move;
     int total;
     Number next, prev;
-    Number(int move, int total){
-      originalNum = move;
+    Number(String val, int total){
+      // BigInteger bigMove 
+      originalNum = new BigInteger(val);
+      originalNum = originalNum.multiply(new BigInteger("811589153"));
+      int move = originalNum.mod(new BigInteger(Integer.toString(total - 1))).intValue();
       move %= (total - 1);
       if(move < 0){
         this.move = total + move - 1;
@@ -64,8 +68,10 @@ public class DayTwenty {
       count++;
     }
     numArray = new Number[count];
-    for(int i = 0; i<count; i++){
-      numArray[i] = new Number(Integer.parseInt(numStrings.get(i)), count);
+    for(int j = 0; j<10; j++){
+      for(int i = 0; i<count; i++){
+        numArray[i] = new Number(numStrings.get(i), count);
+      }
     }
     for(int i = 1; i<count; i++){
       numArray[i].next = numArray[(i+1)%count];
@@ -76,24 +82,25 @@ public class DayTwenty {
 
     // printNums(numArray[0], count);
 
-    for(int i = 0; i<count; i++){
-      // System.out.println(i);
-      numArray[i].advance();
+    for(int j = 0; j<10; j++){
+      for(int i = 0; i<count; i++){
+        numArray[i].advance();
+      }
     }
 
-    int total = 0;
+    BigInteger total = new BigInteger("0");
     System.out.println(numAfter(numArray[0], 1000));
-    total += numAfter(numArray[0], 1000).originalNum;
+    total = total.add(numAfter(numArray[0], 1000).originalNum);
     System.out.println(numAfter(numArray[0], 2000));
-    total += numAfter(numArray[0], 2000).originalNum;
+    total = total.add(numAfter(numArray[0], 2000).originalNum);
     System.out.println(numAfter(numArray[0], 3000));
-    total += numAfter(numArray[0], 3000).originalNum;
+    total = total.add(numAfter(numArray[0], 3000).originalNum);
     System.out.print(total);
   }
 
   public static Number numAfter(Number s, int n){
     Number curr = s;
-    while(curr.originalNum != 0){
+    while(!curr.originalNum.equals(new BigInteger("0"))){
       curr = curr.next;
     }
     for(int i = 0; i<n; i++){
