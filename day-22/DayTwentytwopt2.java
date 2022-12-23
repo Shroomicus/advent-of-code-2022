@@ -1,5 +1,4 @@
 import java.io.File;
-import java.util.Map;
 import java.util.Scanner;
 public class DayTwentytwopt2 {
   /**
@@ -8,17 +7,56 @@ public class DayTwentytwopt2 {
    */
 
   public static class MapFace{
-    
+    int faceNum = -1;
+    MapPosition[][] facePos;
+    MapPosition[][] sides = new MapPosition[4][];
+    int sideLen;
+    MapFace(int fNum, int sideLen){
+      faceNum = fNum;
+      facePos = new MapPosition[sideLen][sideLen];
+      for(int i = 0; i<4; i++){
+        sides[i] = new MapPosition[sideLen];
+      }
+      this.sideLen = sideLen;
+    }
+    void setSides(){
+      for(int i = 0; i<sideLen; i++){
+        sides[0][i] = facePos[i][sideLen-1];
+        sides[1][i] = facePos[sideLen-1][i];
+        sides[2][i] = facePos[i][0];
+        sides[3][i] = facePos[0][i];
+      }
+    }
   }
 
   public static class MapPosition{
+    // 0 : Right
+    // 1 : Down
+    // 2 : Left
+    // 3 : Up
     Boolean isWall = false;
-    MapPosition[] horiz = new MapPosition[2];
-    MapPosition[] vert = new MapPosition[2];
-    MapPosition(char c){
+    MapPosition[] moves = new MapPosition[4];
+    int[] mDirs = new int[4];
+    int[] realpos = new int[2];
+
+    MapPosition(char c, int x, int y){
       if(c == '#'){
         isWall = true;
       }
+      realpos[0] = x;
+      realpos[1] = y;
+      for(int i = 0; i<4; i++){
+        mDirs[i] = i;
+      }
+    }
+  }
+
+  public static class MoveData{
+    MapPosition p;
+    int newDir;
+    MoveData(MapPosition p, int newDir){
+      this.p = p;
+      this.newDir = newDir;
     }
   }
   
@@ -26,8 +64,21 @@ public class DayTwentytwopt2 {
   public static void main(String[] args) throws Exception {
     String inpFile = "data/input.txt";
     MapPosition[][] map = read_map(inpFile);
+    
+    int sideLen = Math.max(map.length, map[0].length);
+    sideLen /= 4;
+
+    MapFace[] cubedMap = getMapShape(map, sideLen);
 
     MapPosition realStart = getPos(map, 0, 0);
+    linkSides(cubedMap[0], cubedMap[3], 2, 2, true);
+    linkSides(cubedMap[0], cubedMap[5], 3, 2, false);
+    linkSides(cubedMap[1], cubedMap[5], 3, 1, false);
+    linkSides(cubedMap[1], cubedMap[2], 1, 0, false);
+    linkSides(cubedMap[1], cubedMap[4], 0, 0, true);
+    linkSides(cubedMap[2], cubedMap[3], 2, 3, false);
+    linkSides(cubedMap[4], cubedMap[5], 1, 0, false);
+    // linkSides(cubedMap[4], cubedMap[1], 1, 1, true);
 
     String[] directions = read_directions(inpFile);
     int moveDir = 0;
@@ -44,12 +95,13 @@ public class DayTwentytwopt2 {
         }
         continue;
       }
-      realStart = move(realStart, moveDir, Integer.parseInt(directions[i]));
+      MoveData data = move(realStart, moveDir, Integer.parseInt(directions[i]));
+      realStart = data.p;
+      moveDir = data.newDir;
     }
 
     printMap(map, realStart);
-    // printHoriz(map);
-
+    System.out.println(moveDir);
     System.out.println(movePos[0] + ", " + movePos[1]);
     System.out.println(1000 * movePos[1] + 4 * movePos[0] + moveDir);
   }
@@ -112,7 +164,7 @@ public class DayTwentytwopt2 {
           map[len][i] = null;
           continue;
         }
-        map[len][i] = new MapPosition(inp.charAt(i));
+        map[len][i] = new MapPosition(inp.charAt(i), i, len);
       }
       len++;
     }
@@ -124,11 +176,11 @@ public class DayTwentytwopt2 {
       // System.out.println(currPos);
       while(currPos != null){
         if(nextPos == null){
-          currPos.horiz[1] = getPos(map, 0, i);
-          currPos.horiz[1].horiz[0] = currPos;
+          currPos.moves[0] = getPos(map, 0, i);
+          currPos.moves[0].moves[2] = currPos;
         } else {
-          currPos.horiz[1] = nextPos;
-          currPos.horiz[1].horiz[0] = currPos;
+          currPos.moves[0] = nextPos;
+          currPos.moves[0].moves[2] = currPos;
         }
         p++;
         currPos = getPos(map, p, i);
@@ -136,7 +188,7 @@ public class DayTwentytwopt2 {
       }
     }
 
-    for(int i = 0; i<len; i++){
+    for(int i = 0; i<max; i++){
       int p = 0;
       MapPosition currPos = getYPos(map, i, 0);
       MapPosition nextPos = getYPos(map, i, p+1);
@@ -147,11 +199,11 @@ public class DayTwentytwopt2 {
       // System.out.println(currPos);
       while(currPos != null){
         if(nextPos == null){
-          currPos.vert[1] = getYPos(map, i, 0);
-          currPos.vert[1].vert[0] = currPos;
+          currPos.moves[1] = getYPos(map, i, 0);
+          currPos.moves[1].moves[3] = currPos;
         } else {
-          currPos.vert[1] = nextPos;
-          currPos.vert[1].vert[0] = currPos;
+          currPos.moves[1] = nextPos;
+          currPos.moves[1].moves[3] = currPos;
         }
         p++;
         currPos = getYPos(map, i, p);
@@ -160,6 +212,51 @@ public class DayTwentytwopt2 {
     }
 
     return map;
+  }
+
+  public static MapFace[] getMapShape(MapPosition[][] unformatted, int sideLen) throws Exception{
+    MapFace[][] shape = new MapFace[unformatted.length / sideLen][unformatted[0].length / sideLen];
+    char[][] mapShape = new char[unformatted.length / sideLen][unformatted[0].length / sideLen];
+    for(int i = 0; i<mapShape.length; i++){
+      for(int j = 0; j<mapShape[0].length; j++){
+        if(unformatted[i * sideLen][j * sideLen] == null){
+          mapShape[i][j] = '-';
+        } else {
+          mapShape[i][j] = 'X';
+        }
+        shape[i][j] = null;
+      }
+    }
+
+    int count = 0;
+    MapFace[] faceList = new MapFace[6];
+    for(int i = 0; i<mapShape.length; i++){
+      for(int j = 0; j<mapShape[0].length; j++){
+        if(mapShape[i][j] == 'X'){
+          faceList[count] = new MapFace(count, sideLen);
+          shape[i][j] = faceList[count];
+          for(int k = 0; k<sideLen; k++){
+            for(int l = 0; l<sideLen; l++){
+              shape[i][j].facePos[k][l] = unformatted[(i * sideLen)+k][(j * sideLen)+l];
+            }
+          }
+          faceList[count].setSides();
+          count++;
+        }
+      }
+    }
+    for(int i = 0; i<shape.length; i++){
+      for(int j = 0; j<shape[0].length; j++){
+        if(shape[i][j] != null){
+          System.out.print(shape[i][j].faceNum);
+        } else {
+          System.out.print('-');
+        }
+      }
+      System.out.println();
+    }
+
+    return faceList;
   }
 
   public static void printMap(MapPosition[][] map, MapPosition curr){
@@ -180,25 +277,6 @@ public class DayTwentytwopt2 {
           continue;
         } 
         System.out.print('.');
-      }
-      System.out.println();
-    }
-  }
-
-  public static void printHoriz(MapPosition[][] map){
-    for(int i = 0; i<map.length; i++){
-      MapPosition start = getPos(map, 0, i);
-      MapPosition curr = start;
-      while(curr != null){
-        if(curr.isWall){
-          System.out.print('#');
-        } else {
-          System.out.print('.');
-        }
-        curr = curr.horiz[1];
-        if(curr == start){
-          break;
-        }
       }
       System.out.println();
     }
@@ -236,45 +314,48 @@ public class DayTwentytwopt2 {
     return map[pos + y][x];
   }
 
-  public static MapPosition move(MapPosition startPos, int dir, int dist){
+  public static MoveData move(MapPosition startPos, int dir, int dist){
     // 0 : Right
     // 1 : Down
     // 2 : Left
     // 3 : Up
-    switch(dir){
-      case 0:
-        for(int i = 0; i<dist; i++){
-          if(startPos.horiz[1].isWall){
-            break;
-          }
-          startPos = startPos.horiz[1];
-        }
-        break;
-      case 1:
-        for(int i = 0; i<dist; i++){
-          if(startPos.vert[1].isWall){
-            break;
-          }
-          startPos = startPos.vert[1];
-        }
-        break;
-      case 2:
-        for(int i = 0; i<dist; i++){
-          if(startPos.horiz[0].isWall){
-            break;
-          }
-          startPos = startPos.horiz[0];
-        }
-        break;
-      case 3:
-        for(int i = 0; i<dist; i++){
-          if(startPos.vert[0].isWall){
-            break;
-          }
-          startPos = startPos.vert[0];
-        }
-        break;
+    for(int i = 0; i<dist; i++){
+      // System.out.println("old:" + dir);
+      // System.out.println(startPos.realpos[0] + ", " + startPos.realpos[1]);
+      // System.out.println(startPos.moves[1]);
+
+      if(startPos.moves[dir].isWall){
+        continue;
+      }
+      int newDir = startPos.mDirs[dir];
+      startPos = startPos.moves[dir];
+      dir = newDir;
+      // System.out.println("new:" + dir);
+      // System.out.println(startPos.realpos[0] + ", " + startPos.realpos[1]);
+      // System.out.println("move: " + dir);
     }
-    return startPos;
+
+    MoveData newInfo = new MoveData(startPos, dir);
+    return newInfo;
+  }
+
+  public static void linkSides(MapFace from, MapFace to, int fromDir, int toDir, Boolean reverse){
+    if(!reverse){
+      for(int i = 0; i<from.sideLen; i++){
+        from.sides[fromDir][i].moves[fromDir] = to.sides[toDir][i];
+        to.sides[toDir][i].moves[toDir] = from.sides[fromDir][i];
+        from.sides[fromDir][i].mDirs[fromDir] = ((toDir + 2) % 4);
+        to.sides[toDir][i].mDirs[toDir] = ((fromDir + 2) % 4);
+      }
+    } else {
+      for(int i = 0; i<from.sideLen; i++){
+        from.sides[fromDir][i].moves[fromDir] = to.sides[toDir][from.sideLen - i - 1];
+        // System.out.println(from.sides[fromDir][i].moves[fromDir]);
+        to.sides[toDir][from.sideLen - i - 1].moves[toDir] = from.sides[fromDir][i];
+        // System.out.println(to.sides[toDir][from.sideLen - i - 1].moves[toDir]);
+        from.sides[fromDir][i].mDirs[fromDir] = ((toDir + 2) % 4);
+        to.sides[toDir][i].mDirs[toDir] = ((fromDir + 2) % 4);
+      }
+    }
   }
 }
